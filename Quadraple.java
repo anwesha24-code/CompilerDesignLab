@@ -18,6 +18,9 @@ class Main {
     static Triple[] triple = new Triple[MAX];
     static int[] indirect = new int[MAX];
 
+    // Mapping variable → triple index
+    static Map<String, Integer> indexMap = new HashMap<>();
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
 
@@ -65,6 +68,8 @@ class Main {
             indirect[i] = i;
             System.out.println("Pointer[" + i + "] -> " + indirect[i]);
         }
+
+        sc.close();
     }
 
     // ---------- PARSE QUADRUPLE ----------
@@ -80,21 +85,31 @@ class Main {
             q.op = "*";
             q.arg1 = p[0].trim();
             q.arg2 = p[1].trim();
+        } else if (rhs.contains("/")) {
+            String[] p = rhs.split("/");
+            q.op = "/";
+            q.arg1 = p[0].trim();
+            q.arg2 = p[1].trim();
         } else if (rhs.contains("+")) {
             String[] p = rhs.split("\\+");
             q.op = "+";
+            q.arg1 = p[0].trim();
+            q.arg2 = p[1].trim();
+        } else if (rhs.contains("-")) {
+            String[] p = rhs.split("-");
+            q.op = "-";
             q.arg1 = p[0].trim();
             q.arg2 = p[1].trim();
         } else if (rhs.contains("[")) {
             int i1 = rhs.indexOf("[");
             int i2 = rhs.indexOf("]");
             q.op = "=[]";
-            q.arg1 = rhs.substring(0, i1);
-            q.arg2 = rhs.substring(i1 + 1, i2);
+            q.arg1 = rhs.substring(0, i1).trim();
+            q.arg2 = rhs.substring(i1 + 1, i2).trim();
         } else {
             q.op = "=";
             q.arg1 = rhs;
-            q.arg2 = "-";
+            q.arg2 = "";
         }
     }
 
@@ -103,27 +118,50 @@ class Main {
         s = s.replace(":=", "=");
         String[] parts = s.split("=");
 
+        String lhs = parts[0].trim();
         String rhs = parts[1].trim();
 
         if (rhs.contains("*")) {
             String[] p = rhs.split("\\*");
             t.op = "*";
-            t.arg1 = p[0].trim();
-            t.arg2 = p[1].trim();
+            t.arg1 = getArg(p[0].trim());
+            t.arg2 = getArg(p[1].trim());
+        } else if (rhs.contains("/")) {
+            String[] p = rhs.split("/");
+            t.op = "/";
+            t.arg1 = getArg(p[0].trim());
+            t.arg2 = getArg(p[1].trim());
         } else if (rhs.contains("+")) {
             String[] p = rhs.split("\\+");
             t.op = "+";
-            t.arg1 = p[0].trim();
-            t.arg2 = p[1].trim();
+            t.arg1 = getArg(p[0].trim());
+            t.arg2 = getArg(p[1].trim());
+        } else if (rhs.contains("-")) {
+            String[] p = rhs.split("-");
+            t.op = "-";
+            t.arg1 = getArg(p[0].trim());
+            t.arg2 = getArg(p[1].trim());
         } else if (rhs.contains("[")) {
             int i1 = rhs.indexOf("[");
+            int i2 = rhs.indexOf("]");
             t.op = "=[]";
-            t.arg1 = rhs.substring(0, i1);
-            t.arg2 = "(" + (index - 1) + ")";
+            t.arg1 = rhs.substring(0, i1).trim();
+            t.arg2 = getArg(rhs.substring(i1 + 1, i2).trim());
         } else {
             t.op = "=";
-            t.arg1 = rhs;
-            t.arg2 = "-";
+            t.arg1 = getArg(rhs);
+            t.arg2 = "";
         }
+
+        // Store mapping
+        indexMap.put(lhs, index);
+    }
+
+    // Convert variable to (index) if exists
+    static String getArg(String s) {
+        if (indexMap.containsKey(s)) {
+            return "(" + indexMap.get(s) + ")";
+        }
+        return s;
     }
 }

@@ -2,115 +2,117 @@ import java.util.*;
 
 public class ExpressionValidator {
 
-    // Check if operator
-    static boolean isOperator(char ch) {
-        return "+-*/".indexOf(ch) != -1;
+    // Operators
+    static Set<String> binaryOps = Set.of("+","-","*","/","%");
+    static Set<String> unaryOps = Set.of("+","-","!","~");
+
+    // Token class
+    static class Token {
+        String value, type;
+        Token(String v, String t){
+            value = v;
+            type = t;
+        }
     }
 
-    // Check if operand (letter or digit)
-    static boolean isOperand(char ch) {
-        return Character.isLetterOrDigit(ch);
+    // Step (a): Lexical Analysis
+    static List<Token> tokenize(String expr) {
+        List<Token> tokens = new ArrayList<>();
+
+        String[] parts = expr.split("\\s+|(?=[()+\\-*/%])|(?<=[()+\\-*/%])");
+
+        for(String p : parts){
+            if(p.trim().isEmpty()) continue;
+
+            if(p.matches("\\d+")) {
+                tokens.add(new Token(p, "OPERAND"));
+            }
+            else if(p.matches("[a-zA-Z]+")) {
+                tokens.add(new Token(p, "OPERAND"));
+            }
+            else if(binaryOps.contains(p)) {
+                tokens.add(new Token(p, "OPERATOR"));
+            }
+            else if(p.equals("(") || p.equals(")")) {
+                tokens.add(new Token(p, "PARENTHESIS"));
+            }
+            else {
+                tokens.add(new Token(p, "INVALID"));
+            }
+        }
+        return tokens;
+    }
+
+    // Step (d): Parentheses check
+    static boolean checkParentheses(List<Token> tokens) {
+        Stack<String> st = new Stack<>();
+
+        for(Token t : tokens){
+            if(t.value.equals("(")) st.push("(");
+            else if(t.value.equals(")")){
+                if(st.isEmpty()) return false;
+                st.pop();
+            }
+        }
+        return st.isEmpty();
+    }
+
+    // Step (b) & (c): Syntax + operator validation
+    static boolean checkSyntax(List<Token> tokens) {
+
+        for(int i = 0; i < tokens.size(); i++){
+            Token curr = tokens.get(i);
+
+            // Check invalid tokens
+            if(curr.type.equals("INVALID")) return false;
+
+            // Binary operator rules
+            if(curr.type.equals("OPERATOR")) {
+
+                // cannot be first or last
+                if(i == 0 || i == tokens.size() - 1)
+                    return false;
+
+                Token prev = tokens.get(i - 1);
+                Token next = tokens.get(i + 1);
+
+                // must be between operands or )
+                if(!(prev.type.equals("OPERAND") || prev.value.equals(")")))
+                    return false;
+
+                if(!(next.type.equals("OPERAND") || next.value.equals("(")))
+                    return false;
+            }
+        }
+        return true;
     }
 
     public static void main(String[] args) {
 
         Scanner sc = new Scanner(System.in);
-        System.out.print("Enter expression: ");
-        String exp = sc.nextLine();
 
-        List<String> tokens = new ArrayList<>();
+        System.out.println("Enter expression:");
+        String expr = sc.nextLine();
 
-        // ---------------- a) Tokenization ----------------
-        for (int i = 0; i < exp.length(); i++) {
-            char ch = exp.charAt(i);
+        // (a) Tokenization
+        List<Token> tokens = tokenize(expr);
 
-            if (ch == ' ')
-                continue;
-
-            if (isOperator(ch) || ch == '(' || ch == ')') {
-                tokens.add(Character.toString(ch));
-            } else if (isOperand(ch)) {
-                String temp = "";
-                while (i < exp.length() && isOperand(exp.charAt(i))) {
-                    temp += exp.charAt(i);
-                    i++;
-                }
-                i--;
-                tokens.add(temp);
-            } else {
-                tokens.add("INVALID");
-            }
+        System.out.println("\nTokens:");
+        for(Token t : tokens){
+            System.out.println(t.value + " -> " + t.type);
         }
 
-        System.out.println("\nTokens: " + tokens);
+        // (d) Parentheses check
+        boolean parenValid = checkParentheses(tokens);
 
-        // ---------------- d) Parentheses Check ----------------
-        Stack<Character> stack = new Stack<>();
-        boolean valid = true;
+        // (b) & (c) Syntax validation
+        boolean syntaxValid = checkSyntax(tokens);
 
-        for (char ch : exp.toCharArray()) {
-            if (ch == '(')
-                stack.push(ch);
-            else if (ch == ')') {
-                if (stack.isEmpty()) {
-                    valid = false;
-                    System.out.println("Error: Unmatched ')'");
-                    break;
-                }
-                stack.pop();
-            }
-        }
+        // Final result
+        System.out.println("\nParentheses Valid: " + parenValid);
+        System.out.println("Syntax Valid: " + syntaxValid);
 
-        if (!stack.isEmpty()) {
-            valid = false;
-            System.out.println("Error: Unmatched '('");
-        }
-
-        // ---------------- b & c) Operator & Syntax Check ----------------
-        String prev = "";
-
-        for (int i = 0; i < tokens.size(); i++) {
-            String curr = tokens.get(i);
-
-            if (curr.equals("INVALID")) {
-                valid = false;
-                System.out.println("Error: Invalid token");
-                break;
-            }
-
-            // If operator
-            if (curr.length() == 1 && isOperator(curr.charAt(0))) {
-
-                // Unary allowed only at start or after '('
-                if (i == 0 || prev.equals("(")) {
-                    System.out.println(curr + " is Unary Operator");
-                } else {
-                    // Binary operator must have operand before and after
-                    if (i == tokens.size() - 1) {
-                        valid = false;
-                        System.out.println("Error: Operator at end");
-                        break;
-                    }
-                    if (!(isOperand(prev.charAt(0)) || prev.equals(")"))) {
-                        valid = false;
-                        System.out.println("Error: Invalid binary operator usage");
-                        break;
-                    }
-                }
-            }
-
-            // Operand after operand (invalid)
-            if (i > 0 && isOperand(curr.charAt(0)) && isOperand(prev.charAt(0))) {
-                valid = false;
-                System.out.println("Error: Missing operator between operands");
-                break;
-            }
-
-            prev = curr;
-        }
-
-        // ---------------- e) Final Result ----------------
-        if (valid) {
+        if(parenValid && syntaxValid){
             System.out.println("\nExpression is SYNTACTICALLY VALID");
         } else {
             System.out.println("\nExpression is SYNTACTICALLY INVALID");
